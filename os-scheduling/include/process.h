@@ -36,10 +36,12 @@ public:
     uint32_t getStartTime() const;
     uint8_t getPriority() const;
     uint64_t getBurstStartTime() const;
+    uint64_t getCurrentBurstTime() const;
     uint64_t getLaunchTime() const;
     State getState() const;
     State getLastState() const;
     bool isInterrupted() const;
+    bool isLastBurst() const;
     int8_t getCpuCore() const;
     double getTurnaroundTime() const;
     double getWaitTime() const;
