@@ -63,6 +63,11 @@ uint64_t Process::getBurstStartTime() const
 {
     return burst_start_time;
 }
+//added 04/01/2021
+uint64_t Process::getCurrentBurstTime() const
+{
+    return burst_times[current_burst];
+}
 
 Process::State Process::getState() const
 {
@@ -118,12 +123,22 @@ void Process::setState(State new_state, uint64_t current_time)
     state = new_state;
 }
 
+bool Process::isLastBurst() const{
+
+    if(current_burst >= (num_bursts - 1)){
+        
+        return true;
+    }
+
+    return false;
+}
+
 void Process::setCpuCore(int8_t core_num)
 {
     core = core_num;
 }
 
-void Process::setlastState(State state, uint64_t current_time)
+void Process::setLastState(State state, uint64_t current_time)
 {
     lastState = state;
 }
