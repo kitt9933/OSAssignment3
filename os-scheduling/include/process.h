@@ -33,6 +33,7 @@ public:
     ~Process();
 
     uint16_t getPid() const;
+    uint16_t get_current_burst_id() const;
     uint32_t getStartTime() const;
     uint8_t getPriority() const;
     uint64_t getBurstStartTime() const;

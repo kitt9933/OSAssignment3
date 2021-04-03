@@ -59,6 +59,11 @@ uint8_t Process::getPriority() const
     return priority;
 }
 
+uint16_t Process::get_current_burst_id() const
+{
+    return current_burst;
+}
+
 uint64_t Process::getBurstStartTime() const
 {
     return burst_start_time;
