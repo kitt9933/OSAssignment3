@@ -1,4 +1,6 @@
 #include "process.h"
+#define __STDC_FORMAT_MACROS
+#include <inttypes.h>
 
 // Process class methods
 Process::Process(ProcessDetails details, uint64_t current_time)
@@ -164,18 +166,24 @@ void Process::updateProcess(uint64_t current_time)
     // cpu time, and remaining time
 
     turn_time = current_time - launch_time;
+    //printf("%" PRIu32 "\n", turn_time);
 
 
 
     updateBurstTime(current_burst, current_time - burst_start_time);
+
     if(state == Running){
         cpu_time = cpu_time + (current_time - state_start);
+        //printf("%" PRIu32 "\n", cpu_time);
     }
     
     wait_time = turn_time - cpu_time;
-    
+
+    //printf("%" PRIu32 "\n", wait_time);
     
     remain_time = remain_time - cpu_time;
+
+    //printf("%" PRIu32 "\n", remain_time);
 
 }
 
