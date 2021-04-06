@@ -176,9 +176,10 @@ void Process::updateProcess(uint64_t current_time)
         cpu_time = cpu_time + (current_time - state_start);
         //printf("%" PRIu32 "\n", cpu_time);
     }
+    else{
     
-    wait_time = turn_time - cpu_time;
-
+        wait_time = turn_time - cpu_time;
+    }   
     //printf("%" PRIu32 "\n", wait_time);
     
     remain_time = remain_time - cpu_time;
@@ -196,7 +197,7 @@ void Process::updateBurstTime(int burst_idx, uint32_t new_time)
 // Comparator methods: used in std::list sort() method
 // No comparator needed for FCFS or RR (ready queue never sorted)
 
-// SJF - comparator for sorting read queue based on shortest remaining CPU time
+// SJF - comparator for sorting ready queue based on shortest remaining CPU time
 //This will return true if p1 is the faster job and false if p2 is the faster job.
 bool SjfComparator::operator ()(const Process *p1, const Process *p2)
 {
