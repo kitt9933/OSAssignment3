@@ -22,7 +22,7 @@ typedef struct SchedulerData {
     uint32_t time_slice;
     std::list<Process*> ready_queue;
     bool all_terminated;
-    Process* cpu;
+    
 } SchedulerData;
 
 void coreRunProcesses(uint8_t core_id, SchedulerData *data);
@@ -65,7 +65,8 @@ int main(int argc, char **argv)
 
     // Create processes
     uint64_t start = currentTime();
-    
+
+    //5
     for (i = 0; i < config->num_processes; i++)
     {
         Process *p = new Process(config->processes[i], start);
@@ -74,9 +75,9 @@ int main(int argc, char **argv)
         if (p->getState() == Process::State::Ready)
         {
             printf("added to ready queue \n");
-
+            
             {
-                std::lock_guard<std::mutex>lock(shared_data->mutex);
+                //std::lock_guard<std::mutex>lock(shared_data->mutex);
                 shared_data->ready_queue.push_back(p);
                 //std::lock_guard<std::mutex>unlock(shared_data->mutex);
             }
@@ -91,7 +92,7 @@ int main(int argc, char **argv)
     std::thread *schedule_threads = new std::thread[num_cores];
     for (i = 0; i < num_cores; i++)
     {
-        schedule_threads[i] = std::thread(coreRunProcesses,i,shared_data ); //i, shared_data
+        schedule_threads[i] = std::thread(coreRunProcesses, i, shared_data ); //i, shared_data
     }
 
     
@@ -110,29 +111,40 @@ int main(int argc, char **argv)
         int cTime = currentTime();
 
         
-        for(int i = 0; i < processes.size(); i++){
+        for(int i = 0; i < processes.size(); i++){//go through each process
             
             //printf("going through processes and conditions \n");
 
             processes[i]->updateProcess(cTime); 
             //   - *Check if any processes need to move from NotStarted to Ready (based on elapsed time), and if so put that process in the ready queue
-            if((processes[i]->getState() == processes[i]->Ready) && processes[i]->getLastState() == processes[i]->NotStarted){
+            if((processes[i]->getStartTime() < (cTime - start))&& processes[i]->getLastState() == processes[i]->NotStarted){ 
+                
+
                 
                 {
                     std::lock_guard<std::mutex>lock(shared_data->mutex);
+                    processes[i]->setState(processes[i]->Ready,cTime);
                     shared_data->ready_queue.push_back(processes[i]);
                     //std::lock_guard<std::mutex>unlock(shared_data->mutex);
                 }
             }
+
+
+
             //   - *Check if any processes have finished their I/O burst, and if so put that process back in the ready queue
             //If it finishes IO does it go bacj to ready state?
-            else if((processes[i]->getState() == processes[i]->Ready) && processes[i]->getLastState() == processes[i]->IO){
+            else if((processes[i]->getState() == processes[i]->IO) && processes[i]->getCurrentBurstTime() < (cTime - processes[i]->getBurstStartTime()) ){ //maybe check this
                 
                 //printf("else if statement inside processes \n");
 
                 {
                     std::lock_guard<std::mutex>lock(shared_data->mutex);
                     shared_data->ready_queue.push_back(processes[i]);
+                    processes[i]->setBurstStartTime(cTime);
+                    printf("%d\n",processes[i]->get_current_burst_id());
+                    processes[i]->incrementBurstIdx();
+                    printf("%d\n",processes[i]->get_current_burst_id());
+                    processes[i]->setState(processes[i]->Ready,cTime);
                     //std::lock_guard<std::mutex>unlock(shared_data->mutex);
                 }
 
@@ -142,11 +154,11 @@ int main(int argc, char **argv)
             
             if(processes[i]->getState() == processes[i]->Running){
                 {
-                    printf("running state \n");
+                    //printf("running state \n");
 
                     std::lock_guard<std::mutex>lock(shared_data->mutex);
                     
-                    if(shared_data->algorithm == RR && (shared_data->time_slice >= cTime - processes[i]->getBurstStartTime())){
+                    if(shared_data->algorithm == RR && (shared_data->time_slice <= cTime - processes[i]->getBurstStartTime())){
                         processes[i]->interrupt();
 
                     }
@@ -165,21 +177,20 @@ int main(int argc, char **argv)
                         processes[i]->interrupt();
                     }
                     //std::lock_guard<std::mutex>unlock(shared_data->mutex);
+
+
+
                 }
             }
 
         }
         
-        //ADD MUTEXES
+        
         //   - *Sort the ready queue (if needed - based on scheduling algorithm)
 
         //WE NEED TO DO THIS BUT WILL DO LATER
 
-        //for (int i = 0; i < num_cores; i++){
-
-            //if()
-
-        //}
+        
 
         //   - Determine if all processes are in the terminated state
         if(shared_data->all_terminated){
@@ -191,7 +202,7 @@ int main(int argc, char **argv)
 
         // output process status table
         num_lines = printProcessOutput(processes, shared_data->mutex);
-        //printf("prints out output \n");
+        
 
         
 
@@ -244,6 +255,7 @@ void coreRunProcesses(uint8_t core_id, SchedulerData *shared_data)
             std::lock_guard<std::mutex>lock(shared_data->mutex);
             currPro = shared_data->ready_queue.front();
             shared_data->ready_queue.pop_front();
+            currPro->setCpuCore(core_id);
             printf("ready queue pops\n");
             
             //std::lock_guard<std::mutex>unlock(shared_data->mutex);
@@ -254,6 +266,7 @@ void coreRunProcesses(uint8_t core_id, SchedulerData *shared_data)
     
         //   - Simulate the processes running until one of the following:
         currPro->setState(currPro->Running, curTime);
+        currPro->setBurstStartTime(curTime);
         while(!shared_data->ready_queue.empty()){
         //continue running until all processes are either terminated or no more processes on either queue??
         //-- Kong's comment
@@ -280,17 +293,22 @@ void coreRunProcesses(uint8_t core_id, SchedulerData *shared_data)
                     currPro->setState(currPro->Terminated, curTime);
                 }
             }
+            
             //     - Interrupted (RR time slice has elapsed or process preempted by higher priority process)
             //double check this!!
-            if(shared_data->time_slice > elapsed || (currPro->getPriority() > shared_data->ready_queue.front()->getPriority())){
-                //go back to ready
-                printf("process interrupted w/ RR \n");
-                
-                std::lock_guard<std::mutex>lock(shared_data->mutex);
-                currPro->setState(currPro->Ready, curTime);
-                shared_data->ready_queue.push_back(currPro);
 
-        
+            {
+                std::lock_guard<std::mutex>lock(shared_data->mutex);
+                if((shared_data->time_slice > elapsed && shared_data->algorithm == RR) || ((currPro->getPriority() > shared_data->ready_queue.front()->getPriority()) &&  shared_data->algorithm == PP)){//problem
+                    //go back to ready
+                    printf("process interrupted w/ RR \n");
+                
+                
+                    currPro->setState(currPro->Ready, curTime);
+                    //maybe update bursttime?
+                    shared_data->ready_queue.push_back(currPro);
+
+                }
             }
             
         }
@@ -314,9 +332,12 @@ void coreRunProcesses(uint8_t core_id, SchedulerData *shared_data)
     //State state; 
     // double check this - 04/01/2021
     
-    if(((curTime - currPro->getBurstStartTime()) > currPro->getCurrentBurstTime()) && currPro->getLastState() != currPro->Terminated && currPro->Running){
+    if(((curTime - currPro->getBurstStartTime()) > currPro->getCurrentBurstTime()) && currPro->getState() == currPro->Running){
 
             currPro->setState(currPro->IO, curTime);
+            
+            currPro->incrementBurstIdx();
+            currPro->setBurstStartTime(curTime);
 
             printf("%" PRIu64 "\n",curTime);
             printf("%" PRIu64 "\n", currPro->getBurstStartTime());
@@ -327,7 +348,7 @@ void coreRunProcesses(uint8_t core_id, SchedulerData *shared_data)
     
     //     - Terminated if CPU burst finished and no more bursts remain -- no actual queue, simply set state to Terminated
     // double check this - 04/01/2021
-    if(((curTime - currPro->getBurstStartTime()) > currPro->getCurrentBurstTime()) && currPro->isLastBurst()== currPro->Running){
+    if(((curTime - currPro->getBurstStartTime()) > currPro->getCurrentBurstTime()) && currPro->isLastBurst() && currPro->getState() == currPro->Running){
             
             printf("process is terminated \n");
 
@@ -351,9 +372,10 @@ void coreRunProcesses(uint8_t core_id, SchedulerData *shared_data)
             //std::lock_guard<std::mutex>unlock(shared_data->mutex);
 
         }
-        printf("current process is interrupted \n");
+        
+        //printf("current process is interrupted \n");
     }
-
+    
     //  - Wait context switching time
     // sleeps for 500 miliseconds
     usleep(500000);

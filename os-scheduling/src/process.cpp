@@ -130,6 +130,8 @@ void Process::setState(State new_state, uint64_t current_time)
     state = new_state;
 }
 
+
+
 bool Process::isLastBurst() const{
 
     if(current_burst >= (num_bursts - 1)){
@@ -170,19 +172,21 @@ void Process::updateProcess(uint64_t current_time)
 
 
 
-    updateBurstTime(current_burst, current_time - burst_start_time);
+    //updateBurstTime(current_burst, current_time - burst_start_time); 
 
     if(state == Running){
-        cpu_time = cpu_time + (current_time - state_start);
+        printf("ct is %ld\n",current_time);
+        printf("ss is %ld\n", state_start);
+        cpu_time = cpu_time + (current_time-state_start); 
         //printf("%" PRIu32 "\n", cpu_time);
     }
     else{
     
-        wait_time = turn_time - cpu_time;
+        wait_time = turn_time - cpu_time; 
     }   
     //printf("%" PRIu32 "\n", wait_time);
     
-    remain_time = remain_time - cpu_time;
+    remain_time = remain_time - cpu_time; //wrong
 
     //printf("%" PRIu32 "\n", remain_time);
 
@@ -191,6 +195,12 @@ void Process::updateProcess(uint64_t current_time)
 void Process::updateBurstTime(int burst_idx, uint32_t new_time)
 {
     burst_times[burst_idx] = new_time;
+}
+
+
+void Process::incrementBurstIdx()
+{
+    current_burst++;
 }
 
 
@@ -229,5 +239,5 @@ bool PpComparator::operator ()(const Process *p1, const Process *p2){
         }
     }
 
-    return false; // change this!
+    return false; 
 }
