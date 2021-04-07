@@ -239,11 +239,12 @@ void coreRunProcesses(uint8_t core_id, SchedulerData *shared_data)
         //   - *Get process at front of ready queue
         
         Process *currPro;
-
+        if(!shared_data->ready_queue.empty())
         {
             std::lock_guard<std::mutex>lock(shared_data->mutex);
             currPro = shared_data->ready_queue.front();
             shared_data->ready_queue.pop_front();
+            printf("ready queue pops\n");
             
             //std::lock_guard<std::mutex>unlock(shared_data->mutex);
 
@@ -258,24 +259,40 @@ void coreRunProcesses(uint8_t core_id, SchedulerData *shared_data)
         //-- Kong's comment
         // this is okay and resolved for now -- 04/02/2021
 
-            printf("inside processes running while-loop \n");
+            //printf("inside processes running while-loop \n");
 
             uint64_t elapsed = currentTime() -currPro->getBurstStartTime();
-            bool processInterrupted;
+            
         
+            
+
+
             //     - CPU burst time has elapsed
-            if(elapsed > currPro->getCurrentBurstTime() ){ //|| (shared_data->algorithm == ScheduleAlgorithm::RR)
+            if(elapsed > currPro->getCurrentBurstTime() && currPro->getState() == currPro->Running){ //|| (shared_data->algorithm == ScheduleAlgorithm::RR)
                 //switch to IO or terminated
-                printf("CPU burst time has elapsed \n");
-                break;
+                
+                //printf("CPU burst time has elapsed \n");
+
+                if(currPro->getRemainingTime() > 0){
+                    currPro->setState(currPro->IO, curTime);
+                }
+                else{
+                    currPro->setState(currPro->Terminated, curTime);
+                }
             }
             //     - Interrupted (RR time slice has elapsed or process preempted by higher priority process)
             //double check this!!
             if(shared_data->time_slice > elapsed || (currPro->getPriority() > shared_data->ready_queue.front()->getPriority())){
                 //go back to ready
                 printf("process interrupted w/ RR \n");
-                processInterrupted = currPro->isInterrupted(); 
+                
+                std::lock_guard<std::mutex>lock(shared_data->mutex);
+                currPro->setState(currPro->Ready, curTime);
+                shared_data->ready_queue.push_back(currPro);
+
+        
             }
+            
         }
     
 
@@ -283,7 +300,7 @@ void coreRunProcesses(uint8_t core_id, SchedulerData *shared_data)
     //  - Place the process back in the appropriate queue
     {
         std::lock_guard<std::mutex>lock(shared_data->mutex);
-        shared_data->ready_queue.push_back(currPro); //fix this
+        //shared_data->ready_queue.push_back(currPro); //fix this
         //printf("start main \n");
         //std::lock_guard<std::mutex>unlock(shared_data->mutex);
     }
@@ -310,7 +327,7 @@ void coreRunProcesses(uint8_t core_id, SchedulerData *shared_data)
     
     //     - Terminated if CPU burst finished and no more bursts remain -- no actual queue, simply set state to Terminated
     // double check this - 04/01/2021
-    if(((curTime - currPro->getBurstStartTime()) > currPro->getCurrentBurstTime()) && currPro->isLastBurst()){
+    if(((curTime - currPro->getBurstStartTime()) > currPro->getCurrentBurstTime()) && currPro->isLastBurst()== currPro->Running){
             
             printf("process is terminated \n");
 
