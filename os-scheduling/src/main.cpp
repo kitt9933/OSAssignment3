@@ -144,6 +144,7 @@ int main(int argc, char **argv)
                     shared_data->ready_queue.push_back(processes[i]);
                     //processes[i]->setBurstStartTime(cTime);
                     
+                    
                     processes[i]->incrementBurstIdx();
                     
                     processes[i]->setState(processes[i]->Ready,cTime);
@@ -349,8 +350,8 @@ void coreRunProcesses(uint8_t core_id, SchedulerData *shared_data)
 
                 if(currPro->getRemainingTime() > 0){
                     currPro->setState(currPro->IO, curTime);
-                    //currPro->incrementBurstIdx();
-                    //currPro->setBurstStartTime(curTime);
+                    currPro->incrementBurstIdx();
+                    currPro->setBurstStartTime(curTime);
                     
                 }
                 else{
