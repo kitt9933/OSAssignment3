@@ -166,25 +166,26 @@ void Process::updateProcess(uint64_t current_time)
 {
     // use `current_time` to update turnaround time, wait time, burst times, 
     // cpu time, and remaining time
-
-    turn_time = current_time - launch_time;
+    if(state != Terminated && ((state == Ready) || (state == Running) || (state == IO) )){
+        turn_time = current_time - launch_time;
+    }
     //printf("%" PRIu32 "\n", turn_time);
 
 
 
     //updateBurstTime(current_burst, current_time - burst_start_time); 
-
+    
     if(state == Running){
         printf("ct is %ld\n",current_time);
         printf("ss is %ld\n", state_start);
         cpu_time = cpu_time + (current_time-state_start); 
-        //printf("%" PRIu32 "\n", cpu_time);
+            //printf("%" PRIu32 "\n", cpu_time);
     }
     else{
     
         wait_time = turn_time - cpu_time; 
     }   
-    //printf("%" PRIu32 "\n", wait_time);
+    
     
     remain_time = remain_time - cpu_time; //wrong
 
